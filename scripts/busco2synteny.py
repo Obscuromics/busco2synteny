@@ -240,8 +240,8 @@ def create_liftover_from_busco(file_1, file_2):
         "liftover.tsv", sep="\t", index=False, header=False
     )
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     args = docopt(__doc__)
 
     # generate liftover file
@@ -298,16 +298,15 @@ if __name__ == "__main__":
         xnew = np.linspace(X.min(), X.max(), 300)
         spl = make_interp_spline(X, Y, k=3)
         power_smooth = spl(xnew)
-        #linewidth = linewidth_from_data_units(average_width, ax, reference="x")
+        # linewidth = linewidth_from_data_units(average_width, ax, reference="x")
 
         plt.plot(
             xnew,
             power_smooth,
             color=alignment_colour,
             alpha=float(args["--alpha"]),
-            linewidth=float(args["--linewidth"])
+            linewidth=float(args["--linewidth"]),
         )
-        
 
     # plot the chromosomes
     plot_chromosomes(
