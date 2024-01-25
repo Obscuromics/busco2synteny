@@ -325,6 +325,9 @@ if __name__ == "__main__":
     )
 
     plt.savefig("busco2synteny.pdf", format="pdf", bbox_inches="tight")
+    fig.set_frameon(True)
+    plt.savefig("busco2synteny.png", format="png", bbox_inches="tight", dpi = 300, transparent=False, facecolor="w")
+
 
 """
 # example command
