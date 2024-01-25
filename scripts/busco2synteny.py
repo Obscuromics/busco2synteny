@@ -15,7 +15,7 @@ Usage: busco2synteny.py -a <STR> -b <STR> -x <STR> -y <STR> [-l <STR> -m <INT> -
     -n, --gapB <INT>                            Gap between genome B chromosomes [default: 10_000_000]
     -c, --chromosome_width <INT>                Chromosome width [default: 6]
     -t, --alpha <FLT>                           Alpha of alignments [default: 0.1]
-    -w, --linewidth <FLT>                           Linewidth of alignments [default: 0.1]
+    -w, --linewidth <FLT>                       Linewidth of alignments [default: 0.1]
     -h, --help                                  Show this message
 
 """
@@ -298,7 +298,7 @@ if __name__ == "__main__":
         xnew = np.linspace(X.min(), X.max(), 300)
         spl = make_interp_spline(X, Y, k=3)
         power_smooth = spl(xnew)
-        linewidth = linewidth_from_data_units(average_width, ax, reference="x")
+        #linewidth = linewidth_from_data_units(average_width, ax, reference="x")
 
         plt.plot(
             xnew,
