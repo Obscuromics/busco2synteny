@@ -44,6 +44,7 @@ SEQ4    13484354    +    Fol_ang_4
 SEQ5    9182351    +    Fol_ang_5
 """
 
+
 def generate_genomefile_dict(genomefile, offset, colour):
     genomefile_dict = {}
     cumulative_genome = offset
@@ -326,7 +327,14 @@ if __name__ == "__main__":
 
     plt.savefig("busco2synteny.pdf", format="pdf", bbox_inches="tight")
     fig.set_frameon(True)
-    plt.savefig("busco2synteny.png", format="png", bbox_inches="tight", dpi = 300, transparent=False, facecolor="w")
+    plt.savefig(
+        "busco2synteny.png",
+        format="png",
+        bbox_inches="tight",
+        dpi=300,
+        transparent=False,
+        facecolor="w",
+    )
 
 
 """
