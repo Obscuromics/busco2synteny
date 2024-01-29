@@ -3,7 +3,7 @@
 
 """
 
-Usage: busco3synteny.py -a <STR> (-x <STR> | -y <STR>)  [-l <STR> -m <INT> -n <INT> -c <INT> -t <FLT> (-w <FLT> | -s) -h]
+Usage: busco3synteny.py -a <STR> (-x <STR> | -y <STR>)  [-l <STR> -m <INT> -n <INT> -c <INT> -t <FLT> (-w <FLT> | -s) -z -h]
 
   [Options]
     -a, --genomefiles <STR>                     File of genome file paths
@@ -16,6 +16,7 @@ Usage: busco3synteny.py -a <STR> (-x <STR> | -y <STR>)  [-l <STR> -m <INT> -n <I
     -t, --alpha <FLT>                           Alpha of alignments [default: 0.1]
     -w, --linewidth <FLT>                       Linewidth of alignments [default: 1]
     -s, --scaled                                Scale linewidths by aligned region length
+    -z, --busco_colours                         Colour by BUSCO statuses (default: colour by ref chrom) (not generalised in this script)
     -h, --help                                  Show this message
 
 """
@@ -29,6 +30,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from operator import itemgetter
+import functools
+from string import ascii_lowercase
 
 # mamba install docopt scipy numpy pandas matplotlib pyarrow
 
@@ -47,10 +50,9 @@ SEQ5    9182351    +    Fol_ang_5
 
 """
 How to do consistent line colouring?
-    Instead of generating a liftover per pair, might be worth trying to make an overall liftover file
     Can then label colours by the number of genomes they are in per chromosome
-Include all buscos but will have to figure out how to do duplicates
 Clear nametags for intermediate genomes?
+Change gap A and gap B to a global gap i guess
 """
 
 
@@ -112,46 +114,56 @@ def plot_chromosomes(genomefile_dict, y_coord, labels, chromosome_width):
 
 
 def generate_alignment_dicts(
-    liftover, genomefile_A_dict, genomefile_B_dict, alignment_coords
+    i, liftover, genomefile_A_dict, genomefile_B_dict, alignment_coords
 ):
-    with open(liftover, "r") as fin:
-        # for each alignment, record coordinates in either genome
-        for line in fin:
-            alignment = []
-            line = line.rstrip()
-            try:
-                seqA, startA, endA, seqB, startB, endB, seqanc = line.split("\t")
-            except ValueError:
-                next
-            midpointA = int(float(startA)) + ((int(endA) - int(startA)) / 2)
-            midpointB = int(startB) + ((int(endB) - int(startB)) / 2)
-            average_width = ((int(endA) - int(startA)) + (int(endB) - int(startB))) / 2
+    colnums = [0] + [n + (3 * i) for n in range(1, 7)]
+    liftover_df = pd.read_csv(
+        liftover, sep="\t", usecols=colnums, header=None, index_col=None
+    )
+    # for each alignment, record coordinates in either genome
+    for row in liftover_df.iterrows():
+        alignment = []
+        try:
+            seqanc, seqA, startA, endA, seqB, startB, endB = row[1]
+            midpointA = int(float(startA)) + (
+                (int(float(endA)) - int(float(startA))) / 2
+            )
+            midpointB = int(float(startB)) + (
+                (int(float(endB)) - int(float(startB))) / 2
+            )
+            average_width = (
+                (int(float(endA)) - int(float(startA)))
+                + (int(float(endB)) - int(float(startB)))
+            ) / 2
+        except ValueError:
+            next
 
-            if seqA in genomefile_A_dict.keys():
-                # flip coords if orientation is -
-                if genomefile_A_dict[seqA][2] == "-":
-                    midpointA = genomefile_A_dict[seqA][1] - midpointA
-                if genomefile_A_dict[seqA][2] == "+":
-                    midpointA += genomefile_A_dict[seqA][0]
-                alignment.append(midpointA)
+        if seqA in genomefile_A_dict.keys():
+            # flip coords if orientation is -
+            if genomefile_A_dict[seqA][2] == "-":
+                midpointA = genomefile_A_dict[seqA][1] - midpointA
+            if genomefile_A_dict[seqA][2] == "+":
+                midpointA += genomefile_A_dict[seqA][0]
+            alignment.append(midpointA)
 
-            if seqB in genomefile_B_dict.keys():
-                # flip coords if orientation is -
-                if genomefile_B_dict[seqB][2] == "-":
-                    midpointB = genomefile_B_dict[seqB][1] - midpointB
-                if genomefile_B_dict[seqB][2] == "+":
-                    midpointB += genomefile_B_dict[seqB][0]
-                alignment.append(midpointB)
-                if int(seqanc) == 0:
-                    line_colour = "lightgrey"
-                else:
-                    line_colour = cm.tab20((int(seqanc) - 1) / 7)
+        if seqB in genomefile_B_dict.keys():
+            # flip coords if orientation is -
+            if genomefile_B_dict[seqB][2] == "-":
+                midpointB = genomefile_B_dict[seqB][1] - midpointB
+            if genomefile_B_dict[seqB][2] == "+":
+                midpointB += genomefile_B_dict[seqB][0]
+            alignment.append(midpointB)
+            if int(float(seqanc)) == 0:
+                line_colour = "lightgrey"
+            else:
+                line_colour = cm.tab20((int(float(seqanc)) - 1) / 7)
 
-            # only interested in alignments on sequences in both genomefiles
-            if len(alignment) == 2:
-                alignment.append(average_width)
-                alignment.append(line_colour)
-                alignment_coords.append(alignment)
+        # only interested in alignments on sequences in both genomefiles
+        if len(alignment) == 2:
+            alignment.append(average_width)
+            alignment.append(line_colour)
+            alignment.append(seqanc)
+            alignment_coords.append(alignment)
 
     return alignment_coords
 
@@ -192,7 +204,6 @@ def linewidth_from_data_units(linewidth, axis, reference="x"):
 
 def load_busco_results(file):
     busco_colnames = ["busco_id", "status", "seq_code", "start", "stop"]
-
     df = pd.read_csv(
         file,
         sep="\t",
@@ -202,8 +213,7 @@ def load_busco_results(file):
         skiprows=[0, 1, 2],
     )
 
-    df = df[df["status"] == "Complete"]
-    df.drop(labels=["status"], axis=1, inplace=True)
+    df = df[df["status"] != "Missing"]
     if "|" in df["seq_code"].iloc[0]:
         df["seq"] = (
             df["seq_code"]
@@ -215,7 +225,7 @@ def load_busco_results(file):
     else:
         df["seq"] = df["seq_code"]
     df.drop(labels=["seq_code"], axis=1, inplace=True)
-    return df
+    return df[["busco_id", "status", "seq", "start", "stop"]]
 
 
 def get_labels(seqs):
@@ -225,54 +235,68 @@ def get_labels(seqs):
     return labels
 
 
-def label_colours(df):
-    seqs = sorted(df["seq_A"].unique())
+def label_colours_by_ref(df):
+    seqs = sorted(df["seq_a"].dropna().unique())
     labels = get_labels(seqs)
     for seq, label in zip(seqs, labels):
-        df.loc[df["seq_A"] == seq, "colour"] = label
+        df.loc[df["seq_a"] == seq, "colour"] = label
 
 
-def create_liftover_from_busco(file_1, file_2):
-    df1 = load_busco_results(file_1)
-    df2 = load_busco_results(file_2)
+def label_colours_by_busco(df):
+    df["combs"] = df.filter(regex="status").astype(str).agg("_".join, axis=1)
+    combs = np.sort(df["combs"].unique())
+    labels = [n for n in range(len(combs))]
+    global colour_dict
+    colour_dict = {}
+    for comb, label in zip(combs, labels):
+        colour_dict[label] = comb
+        df.loc[df["combs"] == comb, "colour"] = label
+    df.drop(labels=["combs"], axis=1, inplace=True)
 
-    df3 = df1.merge(df2, how="outer", on="busco_id")
-    df3.dropna(inplace=True)
-    df3.rename(
-        columns={
-            "start_x": "start_A",
-            "stop_x": "end_A",
-            "seq_x": "seq_A",
-            "start_y": "start_B",
-            "stop_y": "end_B",
-            "seq_y": "seq_B",
-        },
-        inplace=True,
-    )
 
-    label_colours(df3)
-    df3["start_A"] = df3.start_A.astype(int)
-    df3["end_A"] = df3.end_A.astype(int)
-    df3["start_B"] = df3.start_B.astype(int)
-    df3["end_B"] = df3.end_B.astype(int)
-    df3["colour"] = df3.colour.astype(int)
+def create_liftover_from_busco(file_list):
+    n = len(file_list)
 
-    df3[["seq_A", "start_A", "end_A", "seq_B", "start_B", "end_B", "colour"]].to_csv(
-        "liftover.tsv", sep="\t", index=False, header=False
-    )
+    results_dfs = []
+    for i, file in enumerate(file_list):
+        results_dfs.append(load_busco_results(file))
+
+    it = iter(ascii_lowercase)
+
+    for i, df in enumerate(results_dfs, start=1):
+        df_label = next(it)
+        df.rename(
+            columns={
+                col: "{}_{}".format(col, df_label)
+                for col in ("seq", "start", "stop", "status")
+            },
+            inplace=True,
+        )
+    merge = functools.partial(pd.merge, how="outer", on="busco_id")
+    df = functools.reduce(merge, results_dfs)
+
+    if args["--busco_colours"]:
+        label_colours_by_busco(df)
+    else:
+        label_colours_by_ref(df)
+
+    cols = ["colour"] + [
+        label
+        for label in df.columns
+        if any(x in label for x in ["seq", "start", "stop"])
+    ]
+
+    # DROPNA LOCATION
+    df.dropna(inplace=True)
+    df[cols].to_csv("liftover.tsv", sep="\t", index=False, header=False)
+
 
 def plot_pair(
     i,
     genomefile_A_f,
     genomefile_B_f,
-    busco_A_f=None,
-    busco_B_f=None,
     liftover_f="liftover.tsv",
 ):
-    # generate liftover file if using BUSCOs
-    if busco_A_f:
-        create_liftover_from_busco(busco_A_f, busco_B_f)
-
     # generate dicts for each genome with cumulative coordinates
     genomefile_A_dict = generate_genomefile_dict(
         genomefile_A_f, int(args["--gapA"]), colour=False
@@ -285,7 +309,7 @@ def plot_pair(
     # store liftovers in a workdir for each pair
     alignment_coords = []
     alignment_coords = generate_alignment_dicts(
-        liftover_f, genomefile_A_dict, genomefile_B_dict, alignment_coords
+        i, liftover_f, genomefile_A_dict, genomefile_B_dict, alignment_coords
     )
 
     # current plot initiatior
@@ -298,12 +322,14 @@ def plot_pair(
         )
 
     # for each alignment, if the two entries are from the two genomes, plot a curve between them
+    labelled = []
     for alignment in alignment_coords:
         # code is adapted from https://gist.github.com/andrewgiessel/5684769
         upper_x = alignment[0]
         lower_x = alignment[1]
         average_width = alignment[2]
         alignment_colour = alignment[3]
+        colour_code = alignment[4]
         Y_base = np.array(
             [-1, -0.568, -0.32, -0.16, -0.056, 0, 0.056, 0.16, 0.32, 0.568, 1]
         )
@@ -336,13 +362,37 @@ def plot_pair(
         else:
             linewidth = float(args["--linewidth"])
 
-        plt.plot(
-            xnew,
-            power_smooth,
-            color=alignment_colour,
-            alpha=float(args["--alpha"]),
-            linewidth=linewidth,
-        )
+        if args["--busco_colours"]:
+            if alignment_colour not in labelled:
+                labelled.append(alignment_colour)
+
+                plt.plot(
+                    xnew,
+                    power_smooth,
+                    color=alignment_colour,
+                    label=colour_dict[float(colour_code)],
+                    alpha=float(args["--alpha"]),
+                    linewidth=linewidth,
+                )
+
+            else:
+                plt.plot(
+                    xnew,
+                    power_smooth,
+                    color=alignment_colour,
+                    alpha=float(args["--alpha"]),
+                    linewidth=linewidth,
+                )
+            plt.legend()
+
+        else:
+            plt.plot(
+                xnew,
+                power_smooth,
+                color=alignment_colour,
+                alpha=float(args["--alpha"]),
+                linewidth=linewidth,
+            )
 
     # plot the chromosomes
     plot_chromosomes(
@@ -378,10 +428,10 @@ if __name__ == "__main__":
         with open(args["--buscofiles"]) as fh:
             buscofiles = [line.rstrip() for line in fh]
 
+        create_liftover_from_busco(buscofiles)
+
         for i in range(len(genomefiles) - 1):
-            plot_pair(
-                i, genomefiles[i], genomefiles[i + 1], buscofiles[i], buscofiles[i + 1]
-            )
+            plot_pair(i, genomefiles[i], genomefiles[i + 1])
 
     else:
         with open(args["--liftoverfiles"]) as fh:

@@ -116,9 +116,16 @@ def generate_alignment_dicts(
             line = line.rstrip()
             try:
                 seqA, startA, endA, seqB, startB, endB, seqanc = line.split("\t")
-                midpointA = int(float(startA)) + ((int(float(endA)) - int(float(startA))) / 2)
-                midpointB = int(float(startB)) + ((int(float(endB)) - int(float(startB))) / 2)
-                average_width = ((int(float(endA)) - int(float(startA))) + (int(float(endB)) - int(float(startB)))) / 2
+                midpointA = int(float(startA)) + (
+                    (int(float(endA)) - int(float(startA))) / 2
+                )
+                midpointB = int(float(startB)) + (
+                    (int(float(endB)) - int(float(startB))) / 2
+                )
+                average_width = (
+                    (int(float(endA)) - int(float(startA)))
+                    + (int(float(endB)) - int(float(startB)))
+                ) / 2
             except ValueError:
                 next
 
@@ -209,7 +216,8 @@ def load_busco_results(file):
     else:
         df["seq"] = df["seq_code"]
     df.drop(labels=["seq_code"], axis=1, inplace=True)
-    return df[['busco_id','status','seq','start','stop']]
+    return df[["busco_id", "status", "seq", "start", "stop"]]
+
 
 def get_labels(seqs):
     labels = []
@@ -224,9 +232,10 @@ def label_colours_by_ref(df):
     for seq, label in zip(seqs, labels):
         df.loc[df["seq_a"] == seq, "colour"] = label
 
+
 def label_colours_by_busco(df):
-    df['combs'] = df.filter(regex='status').astype(str).agg('_'.join, axis=1)
-    combs = np.sort(df['combs'].unique())
+    df["combs"] = df.filter(regex="status").astype(str).agg("_".join, axis=1)
+    combs = np.sort(df["combs"].unique())
     labels = [n for n in range(len(combs))]
     global colour_dict
     colour_dict = {}
@@ -235,34 +244,42 @@ def label_colours_by_busco(df):
         df.loc[df["combs"] == comb, "colour"] = label
     df.drop(labels=["combs"], axis=1, inplace=True)
 
+
 def create_liftover_from_busco(file_list):
     n = len(file_list)
 
     results_dfs = []
     for i, file in enumerate(file_list):
-        results_dfs.append(load_busco_results(file)) 
+        results_dfs.append(load_busco_results(file))
 
     it = iter(ascii_lowercase)
 
     for i, df in enumerate(results_dfs, start=1):
         df_label = next(it)
-        df.rename(columns={col:'{}_{}'.format(col, df_label) for col in ('seq', 'start','stop','status')}, 
-                  inplace=True)
+        df.rename(
+            columns={
+                col: "{}_{}".format(col, df_label)
+                for col in ("seq", "start", "stop", "status")
+            },
+            inplace=True,
+        )
     merge = functools.partial(pd.merge, how="outer", on="busco_id")
     df = functools.reduce(merge, results_dfs)
 
-    if args['--busco_colours']:
+    if args["--busco_colours"]:
         label_colours_by_busco(df)
     else:
         label_colours_by_ref(df)
 
-    cols = [label for label in df.columns if any(x in label for x in ['seq', 'start','stop','colour'])]
-    
-    #DROPNA LOCATION
+    cols = [
+        label
+        for label in df.columns
+        if any(x in label for x in ["seq", "start", "stop", "colour"])
+    ]
+
+    # DROPNA LOCATION
     df.dropna(inplace=True)
-    df[cols].to_csv(
-        "liftover.tsv", sep="\t", index=False, header=False
-    )
+    df[cols].to_csv("liftover.tsv", sep="\t", index=False, header=False)
 
 
 if __name__ == "__main__":
@@ -338,7 +355,7 @@ if __name__ == "__main__":
         else:
             linewidth = float(args["--line_width"])
 
-        if args['--busco_colours']:
+        if args["--busco_colours"]:
             if alignment_colour not in labelled:
                 labelled.append(alignment_colour)
 
@@ -348,7 +365,7 @@ if __name__ == "__main__":
                     color=alignment_colour,
                     label=colour_dict[float(colour_code)],
                     alpha=float(args["--alpha"]),
-                    linewidth=linewidth
+                    linewidth=linewidth,
                 )
 
             else:
@@ -357,7 +374,7 @@ if __name__ == "__main__":
                     power_smooth,
                     color=alignment_colour,
                     alpha=float(args["--alpha"]),
-                    linewidth=linewidth
+                    linewidth=linewidth,
                 )
             plt.legend()
 
@@ -367,7 +384,7 @@ if __name__ == "__main__":
                 power_smooth,
                 color=alignment_colour,
                 alpha=float(args["--alpha"]),
-                linewidth=linewidth
+                linewidth=linewidth,
             )
 
     # plot the chromosomes
