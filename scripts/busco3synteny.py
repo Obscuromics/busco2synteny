@@ -20,6 +20,9 @@ Usage: busco3synteny.py -a <STR> (-x <STR> | -y <STR>)  [-l <STR> -m <INT> -c <I
 
 """
 
+# Example command:
+# python scripts/busco3synteny.py -a genomefile_paths.txt -x arthropod.buscofile_paths.txt
+
 import sys
 import collections
 import functools
@@ -39,14 +42,6 @@ from docopt import docopt
 # Modified version of a script originally created by Alex Mackintosh
 # https://github.com/A-J-F-Mackintosh/Mackintosh_et_al_2022_Binodaphne/blob/main/minimap2synteny.py
 
-# genomefile example
-"""
-SEQ1    56704976    +    Fol_ang_1
-SEQ2    24513281    +    Fol_ang_2
-SEQ3    14204106    +    Fol_ang_3
-SEQ4    13484354    +    Fol_ang_4
-SEQ5    9182351    +    Fol_ang_5
-"""
 
 """
 Currently labels by one reference
@@ -463,9 +458,3 @@ if __name__ == "__main__":
         transparent=False,
         facecolor="w",
     )
-
-
-"""
-# example command
-python busco3synteny.py -g genomefiles_2n.txt -b buscofiles2n.txt -t 0.25 -w 1
-"""

@@ -22,6 +22,10 @@ Usage: busco2synteny.py -a <STR> -b <STR> -x <STR> -y <STR> [-l <STR> -m <INT> -
 
 """
 
+# Example command:
+# python scripts/busco2synteny.py -a genome_A.genomefile.tsv -b genome_B.genomefile.tsv -x genome_A.busco_results.tsv -y genome_B.busco_results.tsv
+
+
 import sys
 from docopt import docopt
 import collections
@@ -38,16 +42,6 @@ from string import ascii_lowercase
 
 # Modified version of a script originally created by Alex Mackintosh
 # https://github.com/A-J-F-Mackintosh/Mackintosh_et_al_2022_Binodaphne/blob/main/minimap2synteny.py
-
-# genomefile example
-"""
-SEQ1    56704976    +    Fol_ang_1
-SEQ2    24513281    +    Fol_ang_2
-SEQ3    14204106    +    Fol_ang_3
-SEQ4    13484354    +    Fol_ang_4
-SEQ5    9182351    +    Fol_ang_5
-"""
-
 
 def generate_genomefile_dict(genomefile, offset, colour):
     genomefile_dict = {}
