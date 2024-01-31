@@ -210,10 +210,11 @@ def linewidth_from_data_units(linewidth, axis, reference="x"):
     return linewidth * (length / value_range)
 
 
-def load_busco_results(file):
+def load_busco_results(buscofile, genomefile):
     busco_colnames = ["busco_id", "status", "seq_code", "start", "stop"]
+    chromosomes = pd.read_csv(genomefile, sep='\t', usecols=[0], header=None)[0].to_list()
     df = pd.read_csv(
-        file,
+        buscofile,
         sep="\t",
         usecols=[0, 1, 2, 3, 4],
         header=None,
@@ -233,6 +234,7 @@ def load_busco_results(file):
     else:
         df["seq"] = df["seq_code"]
     df.drop(labels=["seq_code"], axis=1, inplace=True)
+    df = df[df["seq"].isin(chromosomes)]
     return df[["busco_id", "status", "seq", "start", "stop"]]
 
 
@@ -262,12 +264,11 @@ def label_colours_by_busco(df):
     df.drop(labels=["combs"], axis=1, inplace=True)
 
 
-def create_liftover_from_busco(file_list):
-    n = len(file_list)
+def create_liftover_from_busco(buscofile_list, genomefile_list):
 
     results_dfs = []
-    for i, file in enumerate(file_list):
-        results_dfs.append(load_busco_results(file))
+    for i, file in enumerate(buscofile_list):
+        results_dfs.append(load_busco_results(file, genomefile_list[i]))
 
     it = iter(ascii_lowercase)
 
@@ -297,7 +298,6 @@ def create_liftover_from_busco(file_list):
     # DROPNA LOCATION
     df.dropna(inplace=True)
     df[cols].to_csv("liftover.tsv", sep="\t", index=False, header=False)
-
 
 def plot_pair(
     i,
@@ -445,7 +445,7 @@ if __name__ == "__main__":
         with open(args["--buscofiles"]) as fh:
             buscofiles = [line.rstrip() for line in fh]
 
-        create_liftover_from_busco(buscofiles)
+        create_liftover_from_busco(buscofiles, genomefiles)
 
         for i in range(len(genomefiles) - 1):
             plot_pair(i, genomefiles[i], genomefiles[i + 1])

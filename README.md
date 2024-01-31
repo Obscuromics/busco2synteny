@@ -1,1 +1,0 @@
-# busco2synteny
