@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # mamba install -c conda-forge -c bioconda ncbi-datasets-cli docopt scipy numpy pandas matplotlib pyarrow
 
-#Examples
-#bash ../scripts/arthropod_synteny.sh arthropoda GCA_947179485.1 GCA_030463065.1
+#Example command
 #bash ../scripts/arthropod_synteny.sh lepidoptera GCA_905220365.1 GCA_905147765.2
 
 get_busco_results () {
