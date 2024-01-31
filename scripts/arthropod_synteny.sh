@@ -20,7 +20,6 @@ get_genome_files () {
   cat "syn_downloads/ncbi_dataset/data/${GENB_ACC}/sequence_report.jsonl" | dataformat tsv genome-seq | tail -n +2 | head | awk -v OFS='\t' '{ if ($9 == "assembled-molecule") { print $7,$10,"+",$7} else { exit }}' > plot_input_files/${GENB_ACC}.genomefile.tsv
 }
 
-mkdir syn_downloads
 mkdir plot_input_files
 
 SCRIPT_DIR=$(dirname "$0")
@@ -28,6 +27,7 @@ BUSCO_DB="$1"
 
 for ACC in ${@: 2}
 do
+	mkdir syn_downloads
 	get_busco_results $ACC $BUSCO_DB
 	get_genome_files $ACC
 	rm -rf syn_downloads
