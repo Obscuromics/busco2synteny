@@ -8,7 +8,7 @@ Usage: busco3synteny.py -a <STR> (-x <STR> | -y <STR>)  [-l <STR> -m <INT> -c <I
   [Options]
     -a, --genomefiles <STR>                     File of genome file paths
     -x, --buscofiles <STR>                      File of busco file paths
-    -y, --liftoverfiles <STR>                   File of liftover file paths
+    -y, --liftoverfile <STR>                    Liftover file
     -l, --labels <STR>                          Whether to plot labels, choose from True or False [default: True]
     -m, --gap <STR>                             Chromosome gap ratio per genome in units of 10Mb (eg '-m 1,1,1,1' for 4 genomes, default: equal)
     -c, --chromosome_width <INT>                Chromosome width [default: 6]
@@ -164,7 +164,7 @@ def generate_alignment_dicts(
             if int(float(seqanc)) == 0:
                 line_colour = "lightgrey"
             else:
-                line_colour = cm.tab10((int(float(seqanc))-1))
+                line_colour = cm.tab20((int(float(seqanc))-1)/9)
 
         # only interested in alignments on sequences in both genomefiles
         if len(alignment) == 2:
@@ -451,11 +451,7 @@ if __name__ == "__main__":
             plot_pair(i, genomefiles[i], genomefiles[i + 1])
 
     else:
-        with open(args["--liftoverfiles"]) as fh:
-            liftoverfiles = [line.rstrip() for line in fh]
-
-        for i in range(len(genomefiles) - 1):
-            plot_pair(i, genomefiles[i], genomefiles[i + 1], liftoverfiles[i])
+        plot_pair(i, genomefiles[i], genomefiles[i + 1], args["--liftoverfile"])
 
     plt.savefig("busco3synteny.pdf", format="pdf", bbox_inches="tight")
     fig.set_frameon(True)

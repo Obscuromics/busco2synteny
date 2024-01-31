@@ -149,7 +149,7 @@ def generate_alignment_dicts(
             if int(float(seqanc)) == 0:
                 line_colour = "lightgrey"
             else:
-                line_colour = cm.tab10((int(float(seqanc))-1))
+                line_colour = cm.tab20((int(float(seqanc))-1)/9)
 
         # only interested in alignments on sequences in both genomefiles
         if len(alignment) == 2:

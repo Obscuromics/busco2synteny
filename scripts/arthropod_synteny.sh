@@ -11,7 +11,7 @@ get_busco_results () {
   BUSCO_DB="$2"
   BUSCO_F=${GENB_ACC}_${BUSCO_DB}.tar.gz
   wget -q https://a3cat.unil.ch/data/busco/${GENB_ACC}/$BUSCO_F -P syn_downloads
-  echo "${BUSCO_F}"
+  echo "Fetching ${GENB_ACC} ${BUSCO_DB} results..."
   tar -xzf syn_downloads/$BUSCO_F -C syn_downloads
   mv syn_downloads/${GENB_ACC}/${BUSCO_DB}/run_${BUSCO_DB}_*/full_table.tsv plot_input_files/${GENB_ACC}.${BUSCO_DB}.busco.tsv
 }
@@ -20,7 +20,10 @@ get_genome_files () {
   GENB_ACC="$1"
   datasets download genome accession ${GENB_ACC} --include seq-report --filename syn_downloads/${GENB_ACC}/ncbi_dataset.zip
   unzip -qq -o syn_downloads/${GENB_ACC}/ncbi_dataset.zip -d syn_downloads/${GENB_ACC}
-  cat "syn_downloads/${GENB_ACC}/ncbi_dataset/data/${GENB_ACC}/sequence_report.jsonl" | dataformat tsv genome-seq | tail -n +2 | awk -F'\t' -v OFS='\t' '{ if ($11 == "assembled-molecule") { print $7,$12,"+",$7} else { exit }}' > plot_input_files/${GENB_ACC}.genomefile.tsv
+  cat "syn_downloads/${GENB_ACC}/ncbi_dataset/data/${GENB_ACC}/sequence_report.jsonl" | \
+  dataformat tsv genome-seq | \
+  tail -n +2 | \
+  awk -F'\t' -v OFS='\t' '{ if ($11 == "assembled-molecule") { print $7,$12,"+",$7} else { exit }}' > plot_input_files/${GENB_ACC}.genomefile.tsv
 }
 
 mkdir plot_input_files
@@ -37,7 +40,7 @@ do
 done
 
 ls plot_input_files/*.genomefile.tsv > plot_input_files/genomefile_paths.txt
-ls plot_input_files/*.busco.tsv > plot_input_files/busco_paths.txt
+ls plot_input_files/*.${BUSCO_DB}.busco.tsv > plot_input_files/busco_paths.${BUSCO_DB}.txt
 
-python ${SCRIPT_DIR}/busco3synteny.py -a plot_input_files/genomefile_paths.txt -x plot_input_files/busco_paths.txt
+python ${SCRIPT_DIR}/busco3synteny.py -a plot_input_files/genomefile_paths.txt -x plot_input_files/busco_paths.${BUSCO_DB}.txt
 
