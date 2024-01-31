@@ -1,23 +1,45 @@
 #!/usr/bin/env bash
-# mamba install -c conda-forge ncbi-datasets-cli
+# mamba install -c conda-forge -c bioconda ncbi-datasets-cli docopt scipy numpy pandas matplotlib pyarrow
+# bash arthropod_synteny.sh arthropoda GCA_947179485.1 GCA_030463065.1
 
-GEN_ONE=GCA_947179485.1
-GEN_TWO=GCA_030463065.1
+get_busco_results () {
+  #Get BUSCO results from https://a3cat.unil.ch/downloads.html
+  GENB_ACC="$1"
+  BUSCO_DB="$2"
+  BUSCO_F=${GENB_ACC}_${BUSCO_DB}.tar.gz
+  wget -q https://a3cat.unil.ch/data/busco/${GENB_ACC}/$BUSCO_F -P syn_downloads
+  echo "${BUSCO_F}"
+  tar -xzf syn_downloads/$BUSCO_F -C syn_downloads
+  mv syn_downloads/${GENB_ACC}/${BUSCO_DB}/run_${BUSCO_DB}_*/full_table.tsv plot_input_files/${GENB_ACC}.${BUSCO_DB}.busco.tsv
+}
 
-BUSCO_DB=arthropoda
+get_genome_files () {
+  GENB_ACC="$1"
+  datasets download genome accession ${GENB_ACC} --include seq-report --filename syn_downloads/ncbi_dataset.zip
+  unzip -qq -o syn_downloads/ncbi_dataset.zip -d syn_downloads
+  cat "syn_downloads/ncbi_dataset/data/${GENB_ACC}/sequence_report.jsonl" | dataformat tsv genome-seq | tail -n +2 | head | awk -v OFS='\t' '{ if ($9 == "assembled-molecule") { print $7,$10,"+",$7} else { exit }}' > plot_input_files/${GENB_ACC}.genomefile.tsv
+}
 
-#Get BUSCO results from https://a3cat.unil.ch/downloads.html
-#BUSCO_ONE=${GEN_ONE}_${BUSCO_DB}.tar.gz
-#BUSCO_TWO=${GEN_TWO}_${BUSCO_DB}.tar.gz
+mkdir syn_downloads
+mkdir plot_input_files
 
-#wget https://a3cat.unil.ch/data/busco/${GEN_ONE}/$BUSCO_ONE
-#wget https://a3cat.unil.ch/data/busco/${GEN_ONE}/$BUSCO_TWO
-#gunzip $BUSCO_ONE; gunzip $BUSCO_TWO
+SCRIPT_DIR=$(dirname "$0")
+BUSCO_DB="$1"
+GEN_ONE="$2"
 
-#Get genomefiles
+echo "$SCRIPT_DIR"
 
-N_CHR=${datasets summary genome accession ${GEN_ONE} --as-json-lines | dataformat tsv genome --fields assmstats-total-number-of-chromosomes}
-datasets download genome accession ${GEN_ONE} --include seq-report
-unzip ncbi_dataset.zip
-cat ncbi_dataset/data/${GEN_ONE}/sequence_report.jsonl | dataformat tsv genome-seq | head -n "${N_CHR}" | tail -n "${N_CHR}"
+for ACC in ${@: 2}
+do
+	get_busco_results $ACC $BUSCO_DB
+	get_genome_files $ACC
+	rm -rf syn_downloads
+done
 
+ls plot_input_files/*.genomefile.tsv > plot_input_files/genomefile_paths.txt
+ls plot_input_files/*.busco.tsv > plot_input_files/busco_paths.txt
+
+python ${SCRIPT_DIR}/busco3synteny.py -a plot_input_files/genomefile_paths.txt -x plot_input_files/busco_paths.txt
+
+#GCA_947179485.1
+#GCA_030463065.1
