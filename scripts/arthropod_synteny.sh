@@ -26,8 +26,6 @@ mkdir plot_input_files
 SCRIPT_DIR=$(dirname "$0")
 BUSCO_DB="$1"
 
-echo "$SCRIPT_DIR"
-
 for ACC in ${@: 2}
 do
 	get_busco_results $ACC $BUSCO_DB
