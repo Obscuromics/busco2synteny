@@ -25,7 +25,6 @@ mkdir plot_input_files
 
 SCRIPT_DIR=$(dirname "$0")
 BUSCO_DB="$1"
-GEN_ONE="$2"
 
 echo "$SCRIPT_DIR"
 
@@ -40,6 +39,3 @@ ls plot_input_files/*.genomefile.tsv > plot_input_files/genomefile_paths.txt
 ls plot_input_files/*.busco.tsv > plot_input_files/busco_paths.txt
 
 python ${SCRIPT_DIR}/busco3synteny.py -a plot_input_files/genomefile_paths.txt -x plot_input_files/busco_paths.txt
-
-#GCA_947179485.1
-#GCA_030463065.1
