@@ -193,10 +193,11 @@ def linewidth_from_data_units(linewidth, axis, reference="x"):
     return linewidth * (length / value_range)
 
 
-def load_busco_results(file):
+def load_busco_results(buscofile, genomefile):
     busco_colnames = ["busco_id", "status", "seq_code", "start", "stop"]
+    chromosomes = pd.read_csv(genomefile, sep='\t', usecols=[0], header=None)[0].to_list()
     df = pd.read_csv(
-        file,
+        buscofile,
         sep="\t",
         usecols=[0, 1, 2, 3, 4],
         header=None,
@@ -216,6 +217,7 @@ def load_busco_results(file):
     else:
         df["seq"] = df["seq_code"]
     df.drop(labels=["seq_code"], axis=1, inplace=True)
+    df = df[df["seq"].isin(chromosomes)]
     return df[["busco_id", "status", "seq", "start", "stop"]]
 
 
@@ -227,7 +229,7 @@ def get_labels(seqs):
 
 
 def label_colours_by_ref(df):
-    seqs = sorted(df["seq_a"].dropna().unique())
+    seqs = sorted(df["seq_a"].dropna().unique(), reverse=True)
     labels = get_labels(seqs)
     for seq, label in zip(seqs, labels):
         df.loc[df["seq_a"] == seq, "colour"] = label
@@ -245,12 +247,11 @@ def label_colours_by_busco(df):
     df.drop(labels=["combs"], axis=1, inplace=True)
 
 
-def create_liftover_from_busco(file_list):
-    n = len(file_list)
+def create_liftover_from_busco(buscofile_list, genomefile_list):
 
     results_dfs = []
-    for i, file in enumerate(file_list):
-        results_dfs.append(load_busco_results(file))
+    for i, file in enumerate(buscofile_list):
+        results_dfs.append(load_busco_results(file, genomefile_list[i]))
 
     it = iter(ascii_lowercase)
 
@@ -271,10 +272,10 @@ def create_liftover_from_busco(file_list):
     else:
         label_colours_by_ref(df)
 
-    cols = [
+    cols = ["colour"] + [
         label
         for label in df.columns
-        if any(x in label for x in ["seq", "start", "stop", "colour"])
+        if any(x in label for x in ["seq", "start", "stop"])
     ]
 
     # DROPNA LOCATION
@@ -286,7 +287,7 @@ if __name__ == "__main__":
     args = docopt(__doc__)
 
     # generate liftover file
-    create_liftover_from_busco([args["--buscoA"], args["--buscoB"]])
+    create_liftover_from_busco([args["--buscoA"], args["--buscoB"]],[args["--genomefileA", "--genomefileB"]])
 
     # generate dicts for each genome with cumulative coordinates
     genomefile_A_dict = generate_genomefile_dict(
