@@ -3,15 +3,14 @@
 
 """
 
-Usage: busco3synteny.py -a <STR> (-x <STR> | -y <STR>)  [-l <STR> -m <INT> -n <INT> -c <INT> -t <FLT> (-w <FLT> | -s) -z -h]
+Usage: busco3synteny.py -a <STR> (-x <STR> | -y <STR>)  [-l <STR> -m <INT> -c <INT> -t <FLT> (-w <FLT> | -s) -z -h]
 
   [Options]
     -a, --genomefiles <STR>                     File of genome file paths
     -x, --buscofiles <STR>                      File of busco file paths
     -y, --liftoverfiles <STR>                   File of liftover file paths
     -l, --labels <STR>                          Whether to plot labels, choose from True or False [default: True]
-    -m, --gapA <INT>                            Gap between genome A chromosomes [default: 10_000_000]
-    -n, --gapB <INT>                            Gap between genome B chromosomes [default: 10_000_000]
+    -m, --gap <STR>                             Chromosome gap ratio per genome in units of 10Mb (eg '-m 1,1,1,1' for 4 genomes, default: equal)
     -c, --chromosome_width <INT>                Chromosome width [default: 6]
     -t, --alpha <FLT>                           Alpha of alignments [default: 0.1]
     -w, --linewidth <FLT>                       Linewidth of alignments [default: 1]
@@ -22,16 +21,17 @@ Usage: busco3synteny.py -a <STR> (-x <STR> | -y <STR>)  [-l <STR> -m <INT> -n <I
 """
 
 import sys
-from docopt import docopt
 import collections
-from scipy.interpolate import make_interp_spline, BSpline
+import functools
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from operator import itemgetter
-import functools
+from scipy.interpolate import make_interp_spline, BSpline
 from string import ascii_lowercase
+from docopt import docopt
+
 
 # mamba install docopt scipy numpy pandas matplotlib pyarrow
 
@@ -49,16 +49,20 @@ SEQ5    9182351    +    Fol_ang_5
 """
 
 """
-How to do consistent line colouring?
-    Can then label colours by the number of genomes they are in per chromosome
+Currently labels by one reference
+    Ignore alignments between non-reference genomes
 Clear nametags for intermediate genomes?
-Change gap A and gap B to a global gap i guess
+Add proper chromosome filtering by genomefile step
+    Import the column and make a list of lists, check its there before merging
+    Be good to add this to busco2synteny too
+    Purely for colour labelling
+    Maybe at the stage where it actually loads the liftover could do this?
 """
 
 
 def generate_genomefile_dict(genomefile, offset, colour):
     genomefile_dict = {}
-    cumulative_genome = offset
+    cumulative_genome = 10_000_000*offset
     with open(genomefile, "r") as fin:
         # for each chromosome, record cumulative coordinates, orientation, and label
         for i, line in enumerate(fin):
@@ -72,7 +76,7 @@ def generate_genomefile_dict(genomefile, offset, colour):
                 label,
             ]
             cumulative_genome += chromosome_length
-            cumulative_genome += offset
+            cumulative_genome += 10_000_000*offset
             if colour:
                 genomefile_dict[chromosome].append(i)
     return genomefile_dict
@@ -101,10 +105,14 @@ def plot_chromosomes(genomefile_dict, y_coord, labels, chromosome_width):
         middle_of_chromosome = genomefile_dict[chromosome][0] + (
             (genomefile_dict[chromosome][1] - genomefile_dict[chromosome][0]) / 2
         )
+        if y_coord < -1:
+            y = y_coord*1.1
+        else:
+            y = y_coord*1.2
         if labels == "True":
             plt.text(
                 middle_of_chromosome,
-                y_coord * 1.2,
+                y,
                 genomefile_dict[chromosome][3],
                 ha="center",
                 va="center",
@@ -156,7 +164,7 @@ def generate_alignment_dicts(
             if int(float(seqanc)) == 0:
                 line_colour = "lightgrey"
             else:
-                line_colour = cm.tab20((int(float(seqanc)) - 1) / 7)
+                line_colour = cm.tab10((int(float(seqanc))-1))
 
         # only interested in alignments on sequences in both genomefiles
         if len(alignment) == 2:
@@ -236,7 +244,7 @@ def get_labels(seqs):
 
 
 def label_colours_by_ref(df):
-    seqs = sorted(df["seq_a"].dropna().unique())
+    seqs = sorted(df["seq_a"].dropna().unique(), reverse=True)
     labels = get_labels(seqs)
     for seq, label in zip(seqs, labels):
         df.loc[df["seq_a"] == seq, "colour"] = label
@@ -298,11 +306,17 @@ def plot_pair(
     liftover_f="liftover.tsv",
 ):
     # generate dicts for each genome with cumulative coordinates
+    if args["--gap"]:
+        gapA = int(gap_ratios[i])
+        gapB = int(gap_ratios[i+1])
+    else:
+        gapA = gapB = 1
+
     genomefile_A_dict = generate_genomefile_dict(
-        genomefile_A_f, int(args["--gapA"]), colour=False
+        genomefile_A_f, gapA, colour=False
     )
     genomefile_B_dict = generate_genomefile_dict(
-        genomefile_B_f, int(args["--gapB"]), colour=True
+        genomefile_B_f, gapB, colour=True
     )
 
     # each alignment has coordinates to be recorded
@@ -423,6 +437,9 @@ if __name__ == "__main__":
     ax.axis("off")
     plt.tick_params(axis="x", which="both", bottom=False, top=False, labelbottom=False)
     plt.tick_params(axis="y", which="both", right=False, left=False, labelleft=False)
+
+    if args['--gap']:
+        gap_ratios = str(args['--gap']).split(',')
 
     if args["--buscofiles"]:
         with open(args["--buscofiles"]) as fh:
