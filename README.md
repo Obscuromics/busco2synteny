@@ -1,6 +1,8 @@
 Synteny plotting with BUSCO genes
 =========
 
+Modification of '[minimap2synteny](https://github.com/A-J-F-Mackintosh/Mackintosh_et_al_2022_Binodaphne/blob/main/minimap2synteny.py)' by Alex Mackintosh to work with BUSCO results files.
+
 ## Dependencies (via [mamba](https://mamba.readthedocs.io/en/latest/))
 -------
 ```
@@ -37,7 +39,7 @@ python scripts/busco3synteny.py -a genomefile_paths.txt -x arthropod.buscofile_p
 ```
 
 -------
-Plotting any number of genomes from '[A3Cat](https://a3cat.unil.ch/downloads.html)' example script - '[arthropod_synteny.sh]
+Plotting any number of genomes from '[A3Cat](https://a3cat.unil.ch/downloads.html)' example script - '[arthropod_synteny.sh](https://github.com/Obscuromics/busco2synteny/blob/main/scripts/arthropod_synteny.sh)'
 
 Input: 
 - BUSCO database (must be available for selected genomes)
