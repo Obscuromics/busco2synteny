@@ -1,0 +1,2 @@
+genome_A.busco_results.tsv
+genome_B.busco_results.tsv
