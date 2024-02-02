@@ -47,11 +47,6 @@ from docopt import docopt
 Currently labels by one reference
     Ignore alignments between non-reference genomes
 Clear nametags for intermediate genomes?
-Add proper chromosome filtering by genomefile step
-    Import the column and make a list of lists, check its there before merging
-    Be good to add this to busco2synteny too
-    Purely for colour labelling
-    Maybe at the stage where it actually loads the liftover could do this?
 """
 
 
