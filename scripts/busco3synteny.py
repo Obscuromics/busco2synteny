@@ -251,7 +251,7 @@ def label_colours_by_ref(df):
     for i, genome in enumerate(df.filter(like="seq").columns):
         if (i + 1) == len(df.filter(like="seq").columns):
             break
-        for seq in df[genome]:
+        for seq in df[genome].dropna().unique():
             df.loc[
                 (df[genome] == seq) & (df["colour"] != df["colour"]), "colour"
             ] = labels[seq]
