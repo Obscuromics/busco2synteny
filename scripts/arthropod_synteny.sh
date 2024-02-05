@@ -36,10 +36,11 @@ do
 	get_busco_results $ACC $BUSCO_DB
 	get_genome_files $ACC
 	rm -rf syn_downloads
-done
 
-ls plot_input_files/*.genomefile.tsv > plot_input_files/genomefile_paths.txt
-ls plot_input_files/*.${BUSCO_DB}.busco.tsv > plot_input_files/busco_paths.${BUSCO_DB}.txt
+  ls plot_input_files/$ACC.genomefile.tsv >> plot_input_files/genomefile_paths.txt
+  ls plot_input_files/$ACC.${BUSCO_DB}.busco.tsv >> plot_input_files/busco_paths.${BUSCO_DB}.txt
+
+done
 
 python ${SCRIPT_DIR}/busco3synteny.py -a plot_input_files/genomefile_paths.txt -x plot_input_files/busco_paths.${BUSCO_DB}.txt
 
