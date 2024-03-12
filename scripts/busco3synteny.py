@@ -92,7 +92,7 @@ def plot_chromosomes(genomefile_dict, y_coord, labels, chromosome_width):
         )
         plt.plot(
             [genomefile_dict[chromosome][0], genomefile_dict[chromosome][1]],
-            [y_coord * 1.02, y_coord * 1.02],
+            [y_coord * 1.00, y_coord * 1.00],
             color="slategrey",
             alpha=1,
             linewidth=chromosome_width,
@@ -100,10 +100,9 @@ def plot_chromosomes(genomefile_dict, y_coord, labels, chromosome_width):
         middle_of_chromosome = genomefile_dict[chromosome][0] + (
             (genomefile_dict[chromosome][1] - genomefile_dict[chromosome][0]) / 2
         )
-        if y_coord < -1:
-            y = y_coord * 1.1
-        else:
-            y = y_coord * 1.2
+
+        y = y_coord + 0.2
+        
         if labels == "True":
             plt.text(
                 middle_of_chromosome,
@@ -410,12 +409,12 @@ def plot_pair(
             )
 
     # plot the chromosomes
-    #plot_chromosomes(
-    #    genomefile_A_dict,
-    #    1 - (2 * i),
-    #    args["--labels"],
-    #    int(args["--chromosome_width"]),
-    #)
+    plot_chromosomes(
+        genomefile_A_dict,
+        1 - (2 * i),
+        args["--labels"],
+        int(args["--chromosome_width"]),
+    )
 
     plot_chromosomes(
         genomefile_B_dict,
