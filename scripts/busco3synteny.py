@@ -410,12 +410,12 @@ def plot_pair(
             )
 
     # plot the chromosomes
-    plot_chromosomes(
-        genomefile_A_dict,
-        1 - (2 * i),
-        args["--labels"],
-        int(args["--chromosome_width"]),
-    )
+    #plot_chromosomes(
+    #    genomefile_A_dict,
+    #    1 - (2 * i),
+    #    args["--labels"],
+    #    int(args["--chromosome_width"]),
+    #)
 
     plot_chromosomes(
         genomefile_B_dict,
