@@ -42,66 +42,71 @@ pd.options.mode.chained_assignment = None  # default='warn'
 # Modified version of a script originally created by Alex Mackintosh
 # https://github.com/A-J-F-Mackintosh/Mackintosh_et_al_2022_Binodaphne/blob/main/minimap2synteny.py
 
-def paf2liftover(paf_file, filter=False):
 
+def paf2liftover(paf_file, filter=False):
     paf_columns = [
-    'query_name',
-    'query_length',
-    'query_start',
-    'query_end',
-    'strand',
-    'target_name',
-    'target_length',
-    'target_start',
-    'target_end',
-    'matches',
-    'length',
-    'mapq',
-    'dvF',
-    'dfI'
+        "query_name",
+        "query_length",
+        "query_start",
+        "query_end",
+        "strand",
+        "target_name",
+        "target_length",
+        "target_start",
+        "target_end",
+        "matches",
+        "length",
+        "mapq",
+        "dvF",
+        "dfI",
     ]
 
-    df = pd.read_csv(paf_file,sep='\t')
+    df = pd.read_csv(paf_file, sep="\t")
     df.columns = paf_columns
-    df['F'] = pd.to_numeric(df['dvF'].str.split(':', expand=True)[2])
-    df['I'] = pd.to_numeric(df['dfI'].str.split(':', expand=True)[2])
-    df['similarity'] = df['matches']/df['length']
-    df['identity'] = 1-(df['I']/df['matches'])
-    df['colour'] = np.nan 
+    df["F"] = pd.to_numeric(df["dvF"].str.split(":", expand=True)[2])
+    df["I"] = pd.to_numeric(df["dfI"].str.split(":", expand=True)[2])
+    df["similarity"] = df["matches"] / df["length"]
+    df["identity"] = 1 - (df["I"] / df["matches"])
+    df["colour"] = np.nan
 
     if filter:
-        filter_df = df.loc[(df['similarity'] >=0.8) & (df['identity']>=0.8)]
+        filter_df = df.loc[(df["similarity"] >= 0.8) & (df["identity"] >= 0.8)]
     else:
         filter_df = df
 
-    ref_chroms = filter_df['query_name'].unique()
+    ref_chroms = filter_df["query_name"].unique()
     labels = get_labels(ref_chroms)
     for seq in ref_chroms:
-            filter_df.loc[
-                (filter_df['query_name'] == seq) & (filter_df["colour"] != filter_df["colour"]), "colour"
-            ] = labels[seq]
+        filter_df.loc[
+            (filter_df["query_name"] == seq)
+            & (filter_df["colour"] != filter_df["colour"]),
+            "colour",
+        ] = labels[seq]
 
+    genomefile_df = filter_df.groupby("query_name")["query_length"].mean().reset_index()
+    genomefile_df["polarity"] = "+"
+    genomefile_df["label"] = genomefile_df["query_name"]
+    genomefile_df.to_csv("A.genomefile", sep="\t", index=False, header=False)
 
-    genomefile_df = filter_df.groupby('query_name')['query_length'].mean().reset_index()
-    genomefile_df['polarity'] = '+'
-    genomefile_df['label'] = genomefile_df['query_name']
-    genomefile_df.to_csv('A.genomefile', sep='\t', index=False, header=False)
-    
-    genomefile_df = filter_df.groupby('target_name')['target_length'].mean().reset_index()
-    genomefile_df['polarity'] = '+'
-    genomefile_df['label'] = genomefile_df['target_name']
-    genomefile_df.to_csv('B.genomefile', sep='\t', index=False, header=False)
+    genomefile_df = (
+        filter_df.groupby("target_name")["target_length"].mean().reset_index()
+    )
+    genomefile_df["polarity"] = "+"
+    genomefile_df["label"] = genomefile_df["target_name"]
+    genomefile_df.to_csv("B.genomefile", sep="\t", index=False, header=False)
 
+    filter_df[
+        [
+            "colour",
+            "query_name",
+            "query_start",
+            "query_end",
+            "target_name",
+            "target_start",
+            "target_end",
+        ]
+    ].to_csv("liftover.tsv", sep="\t", index=False, header=False)
 
-    filter_df[[
-    'colour',
-    'query_name',
-    'query_start',
-    'query_end',
-    'target_name',
-    'target_start',
-    'target_end']].to_csv('liftover.tsv',
-        sep='\t',index=False, header=False)
 
 def generate_genomefile_dict(genomefile, offset, colour):
     genomefile_dict = {}
@@ -150,7 +155,7 @@ def plot_chromosomes(genomefile_dict, y_coord, labels, chromosome_width):
         )
 
         y = y_coord + 0.2
-        
+
         if labels == "True":
             plt.text(
                 middle_of_chromosome,
@@ -176,12 +181,8 @@ def generate_alignment_dicts(
         seqanc, seqA, startA, endA, seqB, startB, endB = row[1]
         if (seqA != seqA) or (seqB != seqB):
             continue
-        midpointA = int(float(startA)) + (
-            (int(float(endA)) - int(float(startA))) / 2
-        )
-        midpointB = int(float(startB)) + (
-            (int(float(endB)) - int(float(startB))) / 2
-        )
+        midpointA = int(float(startA)) + ((int(float(endA)) - int(float(startA))) / 2)
+        midpointB = int(float(startB)) + ((int(float(endB)) - int(float(startB))) / 2)
         average_width = (
             (int(float(endA)) - int(float(startA)))
             + (int(float(endB)) - int(float(startB)))
@@ -250,6 +251,7 @@ def linewidth_from_data_units(linewidth, axis, reference="x"):
     # Scale linewidth to value range
     return linewidth * (length / value_range)
 
+
 def get_labels(seqs):
     labels = {}
     for i, seq in enumerate(seqs):
@@ -271,6 +273,7 @@ def label_colours_by_ref(df):
             df.loc[
                 (df[genome] == seq) & (df["colour"] != df["colour"]), "colour"
             ] = labels[seq]
+
 
 def plot_pair(
     i=0,
@@ -346,11 +349,11 @@ def plot_pair(
             linewidth = float(args["--linewidth"])
 
         plt.plot(
-                xnew,
-                power_smooth,
-                color=alignment_colour,
-                alpha=float(args["--alpha"]),
-                linewidth=linewidth,
+            xnew,
+            power_smooth,
+            color=alignment_colour,
+            alpha=float(args["--alpha"]),
+            linewidth=linewidth,
         )
 
     # plot the chromosomes
@@ -389,7 +392,11 @@ if __name__ == "__main__":
     else:
         with open(args["--genomefiles"]) as fh:
             genomefiles = [line.rstrip() for line in fh]
-        plot_pair(genomefile_A_f=genomefiles[0], genomefile_B_f=genomefiles[1], liftover_f=args["--liftoverfile"])
+        plot_pair(
+            genomefile_A_f=genomefiles[0],
+            genomefile_B_f=genomefiles[1],
+            liftover_f=args["--liftoverfile"],
+        )
 
     plt.savefig("paf2synteny.pdf", format="pdf", bbox_inches="tight")
     fig.set_frameon(True)
