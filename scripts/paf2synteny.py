@@ -3,11 +3,11 @@
 
 """
 
-Usage: busco3synteny.py -a <STR> (-x <STR> | -y <STR>)  [-l <STR> -m <INT> -c <INT> -t <FLT> (-w <FLT> | -s) -z -h]
+Usage: paf2synteny.py (-p <STR> | -a <STR> -y <STR> )[-l <STR> -m <INT> -c <INT> -t <FLT> (-w <FLT> | -s) -h]
 
   [Options]
-    -a, --genomefiles <STR>                     File of genome file paths
-    -x, --buscofiles <STR>                      File of busco file paths
+    -p, --paf <STR>                             PAF file
+    -a, --genomefiles <STR>                     File of genome file paths for 2 genomes
     -y, --liftoverfile <STR>                    Liftover file
     -l, --labels <STR>                          Whether to plot labels, choose from True or False [default: True]
     -m, --gap <STR>                             Chromosome gap ratio per genome in units of 10Mb (eg '-m 1,1,1,1' for 4 genomes, default: equal)
@@ -15,13 +15,12 @@ Usage: busco3synteny.py -a <STR> (-x <STR> | -y <STR>)  [-l <STR> -m <INT> -c <I
     -t, --alpha <FLT>                           Alpha of alignments [default: 0.1]
     -w, --linewidth <FLT>                       Linewidth of alignments [default: 1]
     -s, --scaled                                Scale linewidths by aligned region length
-    -z, --busco_colours                         Colour by BUSCO statuses (default: colour by ref chrom) (not generalised in this script)
     -h, --help                                  Show this message
 
 """
 
 # Example command:
-# python scripts/busco3synteny.py -a genomefile_paths.txt -x arthropod.buscofile_paths.txt
+# ./paf2synteny.py -i aln.paf
 
 import sys
 import collections
@@ -35,25 +34,74 @@ from scipy.interpolate import make_interp_spline, BSpline
 from string import ascii_lowercase
 from docopt import docopt
 
+pd.options.mode.chained_assignment = None  # default='warn'
 
 # mamba install docopt scipy numpy pandas matplotlib pyarrow
 
-# Generalising busco2synteny.py for N genomes
+# Modified busco3synteny.py
 # Modified version of a script originally created by Alex Mackintosh
 # https://github.com/A-J-F-Mackintosh/Mackintosh_et_al_2022_Binodaphne/blob/main/minimap2synteny.py
 
+def paf2liftover(paf_file, filter=False):
 
-"""
-Currently labels by one reference
-    Ignore alignments between non-reference genomes
-Clear nametags for intermediate genomes?
-Add proper chromosome filtering by genomefile step
-    Import the column and make a list of lists, check its there before merging
-    Be good to add this to busco2synteny too
-    Purely for colour labelling
-    Maybe at the stage where it actually loads the liftover could do this?
-"""
+    paf_columns = [
+    'query_name',
+    'query_length',
+    'query_start',
+    'query_end',
+    'strand',
+    'target_name',
+    'target_length',
+    'target_start',
+    'target_end',
+    'matches',
+    'length',
+    'mapq',
+    'dvF',
+    'dfI'
+    ]
 
+    df = pd.read_csv(paf_file,sep='\t')
+    df.columns = paf_columns
+    df['F'] = pd.to_numeric(df['dvF'].str.split(':', expand=True)[2])
+    df['I'] = pd.to_numeric(df['dfI'].str.split(':', expand=True)[2])
+    df['similarity'] = df['matches']/df['length']
+    df['identity'] = 1-(df['I']/df['matches'])
+    df['colour'] = np.nan 
+
+    if filter:
+        filter_df = df.loc[(df['similarity'] >=0.8) & (df['identity']>=0.8)]
+    else:
+        filter_df = df
+
+    ref_chroms = filter_df['query_name'].unique()
+    labels = get_labels(ref_chroms)
+    for seq in ref_chroms:
+            filter_df.loc[
+                (filter_df['query_name'] == seq) & (filter_df["colour"] != filter_df["colour"]), "colour"
+            ] = labels[seq]
+
+
+    genomefile_df = filter_df.groupby('query_name')['query_length'].mean().reset_index()
+    genomefile_df['polarity'] = '+'
+    genomefile_df['label'] = genomefile_df['query_name']
+    genomefile_df.to_csv('A.genomefile', sep='\t', index=False, header=False)
+    
+    genomefile_df = filter_df.groupby('target_name')['target_length'].mean().reset_index()
+    genomefile_df['polarity'] = '+'
+    genomefile_df['label'] = genomefile_df['target_name']
+    genomefile_df.to_csv('B.genomefile', sep='\t', index=False, header=False)
+
+
+    filter_df[[
+    'colour',
+    'query_name',
+    'query_start',
+    'query_end',
+    'target_name',
+    'target_start',
+    'target_end']].to_csv('liftover.tsv',
+        sep='\t',index=False, header=False)
 
 def generate_genomefile_dict(genomefile, offset, colour):
     genomefile_dict = {}
@@ -202,37 +250,6 @@ def linewidth_from_data_units(linewidth, axis, reference="x"):
     # Scale linewidth to value range
     return linewidth * (length / value_range)
 
-
-def load_busco_results(buscofile, genomefile):
-    busco_colnames = ["busco_id", "status", "seq_code", "start", "stop"]
-    chromosomes = pd.read_csv(genomefile, sep="\t", usecols=[0], header=None)[
-        0
-    ].to_list()
-    df = pd.read_csv(
-        buscofile,
-        sep="\t",
-        usecols=[0, 1, 2, 3, 4],
-        header=None,
-        names=busco_colnames,
-        skiprows=[0, 1, 2],
-    )
-
-    df = df[df["status"] != "Missing"]
-    if "|" in df["seq_code"].iloc[0]:
-        df["seq"] = (
-            df["seq_code"]
-            .str.split("|")
-            .apply(itemgetter(1))
-            .str.split(":")
-            .apply(itemgetter(0))
-        )
-    else:
-        df["seq"] = df["seq_code"]
-    df.drop(labels=["seq_code"], axis=1, inplace=True)
-    df = df[df["seq"].isin(chromosomes)]
-    return df[["busco_id", "status", "seq", "start", "stop"]]
-
-
 def get_labels(seqs):
     labels = {}
     for i, seq in enumerate(seqs):
@@ -255,58 +272,10 @@ def label_colours_by_ref(df):
                 (df[genome] == seq) & (df["colour"] != df["colour"]), "colour"
             ] = labels[seq]
 
-
-def label_colours_by_busco(df):
-    df["combs"] = df.filter(regex="status").astype(str).agg("_".join, axis=1)
-    combs = np.sort(df["combs"].unique())
-    labels = [n for n in range(len(combs))]
-    global colour_dict
-    colour_dict = {}
-    for comb, label in zip(combs, labels):
-        colour_dict[label] = comb
-        df.loc[df["combs"] == comb, "colour"] = label
-    df.drop(labels=["combs"], axis=1, inplace=True)
-
-
-def create_liftover_from_busco(buscofile_list, genomefile_list):
-    results_dfs = []
-    for i, file in enumerate(buscofile_list):
-        results_dfs.append(load_busco_results(file, genomefile_list[i]))
-
-    it = iter(ascii_lowercase)
-
-    for i, df in enumerate(results_dfs, start=1):
-        df_label = next(it)
-        df.rename(
-            columns={
-                col: "{}_{}".format(col, df_label)
-                for col in ("seq", "start", "stop", "status")
-            },
-            inplace=True,
-        )
-    merge = functools.partial(pd.merge, how="outer", on="busco_id")
-    df = functools.reduce(merge, results_dfs)
-
-    if args["--busco_colours"]:
-        label_colours_by_busco(df)
-    else:
-        label_colours_by_ref(df)
-
-    # label_colours_by_ref(df)
-
-    cols = ["colour"] + [
-        label
-        for label in df.columns
-        if any(x in label for x in ["seq", "start", "stop"])
-    ]
-
-    df[cols].to_csv("liftover.tsv", sep="\t", index=False, header=False, na_rep="NA")
-
-
 def plot_pair(
-    i,
-    genomefile_A_f,
-    genomefile_B_f,
+    i=0,
+    genomefile_A_f="A.genomefile",
+    genomefile_B_f="B.genomefile",
     liftover_f="liftover.tsv",
 ):
     # generate dicts for each genome with cumulative coordinates
@@ -376,37 +345,13 @@ def plot_pair(
         else:
             linewidth = float(args["--linewidth"])
 
-        if args["--busco_colours"]:
-            if alignment_colour not in labelled:
-                labelled.append(alignment_colour)
-
-                plt.plot(
-                    xnew,
-                    power_smooth,
-                    color=alignment_colour,
-                    label=colour_dict[float(colour_code)],
-                    alpha=float(args["--alpha"]),
-                    linewidth=linewidth,
-                )
-
-            else:
-                plt.plot(
-                    xnew,
-                    power_smooth,
-                    color=alignment_colour,
-                    alpha=float(args["--alpha"]),
-                    linewidth=linewidth,
-                )
-            plt.legend()
-
-        else:
-            plt.plot(
+        plt.plot(
                 xnew,
                 power_smooth,
                 color=alignment_colour,
                 alpha=float(args["--alpha"]),
                 linewidth=linewidth,
-            )
+        )
 
     # plot the chromosomes
     plot_chromosomes(
@@ -427,12 +372,8 @@ def plot_pair(
 if __name__ == "__main__":
     args = docopt(__doc__)
 
-    # read args and generate list of genome and busco files
-    with open(args["--genomefiles"]) as fh:
-        genomefiles = [line.rstrip() for line in fh]
-
     # set up plot
-    fig = plt.figure(figsize=(28, 4 * (len(genomefiles) / 2)), frameon=False)
+    fig = plt.figure(figsize=(28, 4 * (2 / 2)), frameon=False)
     ax = fig.add_subplot(111)
     ax.axis("off")
     plt.tick_params(axis="x", which="both", bottom=False, top=False, labelbottom=False)
@@ -441,23 +382,19 @@ if __name__ == "__main__":
     if args["--gap"]:
         gap_ratios = str(args["--gap"]).split(",")
 
-    if args["--buscofiles"]:
-        with open(args["--buscofiles"]) as fh:
-            buscofiles = [line.rstrip() for line in fh]
-
-        create_liftover_from_busco(buscofiles, genomefiles)
-
-        for i in range(len(genomefiles) - 1):
-            plot_pair(i, genomefiles[i], genomefiles[i + 1])
-
+    if args["--paf"]:
+        paf_file = str(args["--paf"])
+        paf2liftover(paf_file)
+        plot_pair()
     else:
-        for i in range(len(genomefiles) - 1):
-            plot_pair(i, genomefiles[i], genomefiles[i + 1], args["--liftoverfile"])
+        with open(args["--genomefiles"]) as fh:
+            genomefiles = [line.rstrip() for line in fh]
+        plot_pair(genomefile_A_f=genomefiles[0], genomefile_B_f=genomefiles[1], liftover_f=args["--liftoverfile"])
 
-    plt.savefig("busco3synteny.pdf", format="pdf", bbox_inches="tight")
+    plt.savefig("paf2synteny.pdf", format="pdf", bbox_inches="tight")
     fig.set_frameon(True)
     plt.savefig(
-        "busco3synteny.png",
+        "paf2synteny.png",
         format="png",
         bbox_inches="tight",
         dpi=300,
