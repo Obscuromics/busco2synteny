@@ -116,7 +116,7 @@ def generate_genomefile_dict(genomefile, offset, colour):
         for i, line in enumerate(fin):
             line = line.rstrip()
             chromosome, chromosome_length, orientation, label = line.split("\t")
-            chromosome_length = int(chromosome_length)
+            chromosome_length = int(float(chromosome_length))
             genomefile_dict[chromosome] = [
                 cumulative_genome,
                 cumulative_genome + chromosome_length,
